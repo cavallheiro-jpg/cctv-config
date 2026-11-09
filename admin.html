@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CCTV | Administração</title>
+<style>
+:root{--bg:#0B0B0E;--panel:#17171C;--line:#34343C;--text:#F7F7F8;--mute:#A8A8B0;--accent:#D4AF37}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1000px 500px at 85% -10%,#2c2512 0,transparent 60%),var(--bg);color:var(--text);font:16px/1.45 "Segoe UI",system-ui,sans-serif}
+main{max-width:640px;margin:0 auto;padding:24px 18px 60px}
+h1{font-size:1.6rem;margin:0 0 4px}h1 span{color:var(--accent)}
+.sub{color:var(--mute);margin:0 0 22px}
+section{background:var(--panel);border-radius:16px;padding:18px;margin-bottom:16px}
+h2{margin:0 0 10px;font-size:1.05rem;color:var(--accent)}
+label{display:block;color:var(--mute);font-size:.9rem;margin:12px 0 5px}
+input,textarea{width:100%;background:#0f0f13;border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--text);font:inherit;min-height:46px}
+input:focus,textarea:focus{outline:2px solid var(--accent)}
+.row{display:flex;gap:10px}.row>*{flex:1}
+button{border:0;border-radius:12px;padding:14px 20px;font:inherit;font-weight:700;cursor:pointer}
+.go{background:linear-gradient(135deg,#8A6500,#E8C65A 45%,#D4AF37);color:#1A1405}
+.ghost{background:#ffffff1f;color:var(--text)}
+.bar{display:flex;gap:10px;margin:16px 0}.bar button{flex:1}
+#st{min-height:1.4em;margin:10px 0;font-weight:600}
+.ok{color:#7be28a}.er{color:#ff8fa8}
+small,details{color:var(--mute)}
+details{margin-top:6px;font-size:.92rem}summary{cursor:pointer;color:var(--text)}
+code{background:#0f0f13;padding:2px 6px;border-radius:6px;word-break:break-all}
+ol{padding-left:20px}
+</style>
+</head>
+<body>
+<main>
+  <h1>CCTV <span>Administração</span></h1>
+  <p class="sub">Troque os endereços do app sem gerar um novo APK. O app lê essas informações toda vez que abre.</p>
+
+  <section>
+    <h2>Endereços e avisos</h2>
+    <label for="d1">Servidor principal (DNS)</label><input id="d1" placeholder="http://adap.foo" autocapitalize="off">
+    <label for="d2">Servidor internacional (reserva)</label><input id="d2" placeholder="http://intx.foo" autocapitalize="off">
+    <label for="d3">Servidor extra (opcional)</label><input id="d3" placeholder="http://..." autocapitalize="off">
+    <label for="ep">Guia de programação (EPG)</label><input id="ep" placeholder="http://b7.si/epg" autocapitalize="off">
+    <div class="row">
+      <div><label for="wa">WhatsApp (com 55 e DDD)</label><input id="wa" inputmode="numeric" placeholder="5551998863649"></div>
+      <div><label for="dias">Avisar quando faltar (dias)</label><input id="dias" inputmode="numeric" placeholder="3"></div>
+    </div>
+    <label for="msg">Mensagem do aviso (opcional)</label><textarea id="msg" rows="2" placeholder="Para renovar, entre em contato pelo WhatsApp."></textarea>
+  </section>
+
+  <section>
+    <h2>Conexão com o GitHub</h2>
+    <div class="row">
+      <div><label for="own">Usuário</label><input id="own" value="cavallheiro-jpg" autocapitalize="off"></div>
+      <div><label for="rep">Repositório</label><input id="rep" value="cctv-config" autocapitalize="off"></div>
+    </div>
+    <label for="tok">Token de acesso</label><input id="tok" type="password" placeholder="github_pat_..." autocomplete="off">
+    <label style="display:flex;gap:8px;align-items:center"><input id="rem" type="checkbox" style="width:auto;min-height:0"> Lembrar o token neste aparelho</label>
+    <details>
+      <summary>Como criar o token (uma vez só)</summary>
+      <ol>
+        <li>No GitHub, toque na sua foto > Settings > Developer settings > Personal access tokens > Fine-grained tokens > Generate new token.</li>
+        <li>Em "Repository access", escolha "Only select repositories" e marque só <code>cctv-config</code>.</li>
+        <li>Em "Permissions" > Repository permissions, deixe <b>Contents</b> como "Read and write".</li>
+        <li>Gere o token e cole acima. Ele só vale para esse repositório.</li>
+      </ol>
+    </details>
+  </section>
+
+  <div class="bar"><button class="ghost" id="load">Carregar atual</button><button class="go" id="save">Salvar</button></div>
+  <div id="st" role="status"></div>
+  <small>O app lê: <code id="url"></code></small>
+</main>
+<script>
+const $ = s => document.querySelector(s), F = 'config.json', B = 'main';
+let sha = '';
+const st = (t, ok) => { $('#st').textContent = t; $('#st').className = ok === undefined ? '' : ok ? 'ok' : 'er'; };
+const api = () => `https://api.github.com/repos/${$('#own').value.trim()}/${$('#rep').value.trim()}/contents/${F}`;
+const hdr = () => { const h = { Accept: 'application/vnd.github+json' }; const t = $('#tok').value.trim(); if (t) h.Authorization = 'Bearer ' + t; return h; };
+const dec = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\n/g, '')), c => c.charCodeAt(0)));
+const enc = s => btoa(unescape(encodeURIComponent(s)));
+function paint() { $('#url').textContent = `https://raw.githubusercontent.com/${$('#own').value.trim()}/${$('#rep').value.trim()}/${B}/${F}`; }
+['own', 'rep'].forEach(i => $('#' + i).addEventListener('input', paint));
+try { const g = JSON.parse(localStorage.getItem('cctv-admin') || '{}'); if (g.own) $('#own').value = g.own; if (g.rep) $('#rep').value = g.rep; if (g.tok) { $('#tok').value = g.tok; $('#rem').checked = true; } } catch (e) {}
+paint();
+function remember() { try { localStorage.setItem('cctv-admin', JSON.stringify({ own: $('#own').value.trim(), rep: $('#rep').value.trim(), tok: $('#rem').checked ? $('#tok').value.trim() : '' })); } catch (e) {} }
+function fill(c) { const d = c.dns || []; $('#d1').value = d[0] || ''; $('#d2').value = d[1] || ''; $('#d3').value = d[2] || ''; $('#ep').value = c.epg || ''; $('#wa').value = c.wa || ''; $('#dias').value = c.warnDays ?? 3; $('#msg').value = c.msg || ''; }
+async function load() {
+  st('Carregando…');
+  try {
+    const r = await fetch(api() + '?ref=' + B + '&t=' + Date.now(), { headers: hdr() });
+    if (r.status == 404) { sha = ''; st('Arquivo ainda não existe. Preencha e toque em Salvar para criar.', false); return; }
+    if (!r.ok) throw new Error('Erro ' + r.status);
+    const j = await r.json(); sha = j.sha; fill(JSON.parse(dec(j.content))); st('Configuração carregada.', true);
+  } catch (e) { st('Não foi possível carregar: ' + e.message, false); }
+}
+const urlOk = u => /^https?:\/\/[^\s]+$/.test(u);
+async function save() {
+  const dns = [$('#d1').value, $('#d2').value, $('#d3').value].map(x => x.trim().replace(/\/+$/, '')).filter(Boolean), epg = $('#ep').value.trim(), wa = $('#wa').value.replace(/\D/g, ''), dias = parseInt($('#dias').value, 10);
+  if (!dns.length || !dns.every(urlOk)) return st('Informe ao menos um servidor, começando com http:// ou https://', false);
+  if (epg && !urlOk(epg)) return st('O endereço do guia (EPG) precisa começar com http:// ou https://', false);
+  if (wa.length < 10) return st('Informe o WhatsApp com 55 e o DDD, só números.', false);
+  if (!(dias >= 0 && dias <= 60)) return st('Os dias do aviso devem ficar entre 0 e 60.', false);
+  if (!$('#tok').value.trim()) return st('Cole o token de acesso do GitHub para salvar.', false);
+  const cfg = { dns, epg, wa, warnDays: dias, msg: $('#msg').value.trim() };
+  st('Salvando…');
+  try {
+    if (!sha) { const r0 = await fetch(api() + '?ref=' + B + '&t=' + Date.now(), { headers: hdr() }); if (r0.ok) sha = (await r0.json()).sha; }
+    const body = { message: 'Atualiza configuração do app', content: enc(JSON.stringify(cfg, null, 2) + '\n'), branch: B }; if (sha) body.sha = sha;
+    const r = await fetch(api(), { method: 'PUT', headers: { ...hdr(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { const t = await r.text(); throw new Error(r.status == 401 || r.status == 403 ? 'token sem permissão (confira Contents: Read and write)' : r.status == 409 || r.status == 422 ? 'o arquivo mudou; toque em Carregar atual e tente de novo' : 'erro ' + r.status); }
+    sha = (await r.json()).content.sha; remember(); st('Salvo. O app usa as novas informações na próxima vez que abrir (pode levar alguns minutos).', true);
+  } catch (e) { st('Não foi possível salvar: ' + e.message, false); }
+}
+$('#load').onclick = () => { remember(); load(); };
+$('#save').onclick = save;
+fill({ dns: ['http://adap.foo', 'http://intx.foo'], epg: 'http://b7.si/epg', wa: '5551998863649', warnDays: 3 });
+</script>
+</body>
+</html>
