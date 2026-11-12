@@ -45,6 +45,8 @@ ol{padding-left:20px}
       <div><label for="dias">Avisar quando faltar (dias)</label><input id="dias" inputmode="numeric" placeholder="3"></div>
     </div>
     <label for="msg">Mensagem do aviso (opcional)</label><textarea id="msg" rows="2" placeholder="Para renovar, entre em contato pelo WhatsApp."></textarea>
+    <label for="tmdb">Chave do TMDB (capas, elenco e recomendações)</label><input id="tmdb" autocapitalize="off" placeholder="chave da API (v3)">
+    <label for="hide">Categorias de canais que não carregam (uma por linha)</label><textarea id="hide" rows="7" placeholder="Canada"></textarea>
   </section>
 
   <section>
@@ -83,7 +85,7 @@ function paint() { $('#url').textContent = `https://raw.githubusercontent.com/${
 try { const g = JSON.parse(localStorage.getItem('cctv-admin') || '{}'); if (g.own) $('#own').value = g.own; if (g.rep) $('#rep').value = g.rep; if (g.tok) { $('#tok').value = g.tok; $('#rem').checked = true; } } catch (e) {}
 paint();
 function remember() { try { localStorage.setItem('cctv-admin', JSON.stringify({ own: $('#own').value.trim(), rep: $('#rep').value.trim(), tok: $('#rem').checked ? $('#tok').value.trim() : '' })); } catch (e) {} }
-function fill(c) { const d = c.dns || []; $('#d1').value = d[0] || ''; $('#d2').value = d[1] || ''; $('#d3').value = d[2] || ''; $('#ep').value = c.epg || ''; $('#wa').value = c.wa || ''; $('#dias').value = c.warnDays ?? 3; $('#msg').value = c.msg || ''; }
+function fill(c) { const d = c.dns || []; $('#d1').value = d[0] || ''; $('#d2').value = d[1] || ''; $('#d3').value = d[2] || ''; $('#ep').value = c.epg || ''; $('#wa').value = c.wa || ''; $('#dias').value = c.warnDays ?? 3; $('#msg').value = c.msg || ''; $('#tmdb').value = c.tmdb ?? ''; $('#hide').value = (c.hide || []).join('\n'); }
 async function load() {
   st('Carregando…');
   try {
@@ -101,7 +103,7 @@ async function save() {
   if (wa.length < 10) return st('Informe o WhatsApp com 55 e o DDD, só números.', false);
   if (!(dias >= 0 && dias <= 60)) return st('Os dias do aviso devem ficar entre 0 e 60.', false);
   if (!$('#tok').value.trim()) return st('Cole o token de acesso do GitHub para salvar.', false);
-  const cfg = { dns, epg, wa, warnDays: dias, msg: $('#msg').value.trim() };
+  const cfg = { dns, epg, wa, warnDays: dias, msg: $('#msg').value.trim(), tmdb: $('#tmdb').value.trim(), hide: $('#hide').value.split('\n').map(x => x.trim()).filter(Boolean) };
   st('Salvando…');
   try {
     if (!sha) { const r0 = await fetch(api() + '?ref=' + B + '&t=' + Date.now(), { headers: hdr() }); if (r0.ok) sha = (await r0.json()).sha; }
@@ -113,7 +115,7 @@ async function save() {
 }
 $('#load').onclick = () => { remember(); load(); };
 $('#save').onclick = save;
-fill({ dns: ['http://adap.foo', 'http://intx.foo'], epg: 'http://b7.si/epg', wa: '5551998863649', warnDays: 3 });
+fill({ dns: ['http://adap.foo', 'http://intx.foo'], epg: 'http://b7.si/epg', wa: '5551998863649', warnDays: 3, tmdb: '30d05ccccdbe63cb9b09c85d6b3a79d5', hide: ['Canada', 'Espanha', 'Estados Unidos', 'Estados Unidos Local', 'Music Choice', 'Portugal', 'Portugal Esportes'] });
 </script>
 </body>
 </html>
