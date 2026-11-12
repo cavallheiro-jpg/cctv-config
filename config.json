@@ -6,5 +6,15 @@
   "epg": "http://b7.si/epg",
   "wa": "5551998863649",
   "warnDays": 3,
-  "msg": ""
+  "msg": "",
+  "tmdb": "30d05ccccdbe63cb9b09c85d6b3a79d5",
+  "hide": [
+    "Canada",
+    "Espanha",
+    "Estados Unidos",
+    "Estados Unidos Local",
+    "Music Choice",
+    "Portugal",
+    "Portugal Esportes"
+  ]
 }
