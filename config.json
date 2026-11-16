@@ -3,7 +3,7 @@
     "http://adap.foo",
     "http://intx.foo"
   ],
-  "epg": "https://iptv-epg.org/files/epg-br.xml",
+  "epg": "",
   "wa": "5551998863649",
   "warnDays": 3,
   "msg": "",
