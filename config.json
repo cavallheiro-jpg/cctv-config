@@ -16,5 +16,23 @@
     "Music Choice",
     "Portugal",
     "Portugal Esportes"
-  ]
+  ],
+  "esportes": {
+    "canais": {},
+    "times": {},
+    "competicoes": [
+      "WC",
+      "CL",
+      "BL1",
+      "DED",
+      "BSA",
+      "PD",
+      "FL1",
+      "ELC",
+      "PPL",
+      "EC",
+      "SA",
+      "PL"
+    ]
+  }
 }
