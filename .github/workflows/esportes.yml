@@ -1,0 +1,38 @@
+name: Atualizar esportes
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+concurrency:
+  group: esportes
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Baixar dados anteriores
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: dados
+          path: dados
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Rodar serviço
+        run: mkdir -p dados out && node atualizar-esportes.mjs
+        env:
+          FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
+      - name: Publicar na branch dados
+        run: |
+          cd out
+          git init -q -b dados
+          git config user.name "cctv-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "esportes $(date -u +%FT%TZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" dados
