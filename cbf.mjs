@@ -70,19 +70,20 @@ async function pegar(url, tent = 2) {
 
 // cache: { dias: { 'aaaa-mm-dd': { t, jogos } } }. Devolve { ok, jogos, competicoes, diag, cache }
 export async function coletarCBF(now, cache, cfg = {}) {
-  const dias = (cache && cache.dias) || {}, novo = {}, diag = [], hoje = ymdBR(now), horaBR = new Date(now - BRT).getUTCHours();
+  const dias = (cache && cache.v == 2 && cache.dias) || {}, novo = {}, diag = [], hoje = ymdBR(now), horaBR = new Date(now - BRT).getUTCHours();
   const alvo = [[0, 0], [1, 30], [2, 30]]; if (horaBR < 4) alvo.unshift([-1, 20]);
   let chamadas = 0, ok = 0, comps = new Set();
   for (const [d, minutos] of alvo) {
     const dia = ymdBR(now + d * 86400e3), velho = dias[dia];
-    if (velho && now - velho.t < minutos * 60e3) { novo[dia] = velho; ok++; diag.push({ dia, fonte: 'cache' }); continue; }
+    const ttl = velho && !(velho.jogos || []).length ? Math.min(minutos, 8) : minutos; // dia vazio é conferido de novo em poucos minutos
+    if (velho && now - velho.t < ttl * 60e3) { novo[dia] = velho; ok++; diag.push({ dia, fonte: 'cache' }); continue; }
     if (chamadas++) await sleep(2500);
     const [a, m, dd] = dia.split('-'), r = await pegar(`${BASE}/api/cbf/calendario/jogos/${a}/${m}/${dd}`);
     if (r.json) { const x = extrairJogos(r.json, cfg.incluir, dia); novo[dia] = { t: now, jogos: x.jogos, competicoes: x.competicoes }; ok++; diag.push({ dia, status: r.st, jogos: x.jogos.length }); }
     else { diag.push({ dia, status: r.st, erro: r.erro }); if (velho) novo[dia] = velho; }
   }
   const jogos = []; for (const d in novo) { for (const j of novo[d].jogos) jogos.push(j); for (const c of novo[d].competicoes || []) comps.add(c); }
-  return { ok: ok > 0, jogos, competicoes: [...comps], diag, cache: { dias: novo } };
+  return { ok: ok > 0, jogos, competicoes: [...comps], diag, cache: { v: 2, dias: novo } };
 }
 
 // teste isolado: node atualizar-esportes.mjs --teste-cbf
