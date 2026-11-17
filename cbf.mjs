@@ -22,18 +22,19 @@ export function quando(data, hora) {
 }
 
 // Percorre o JSON sem depender do formato exato: acha todo objeto com id_jogo e guarda os nomes dos grupos acima dele.
-export function extrairJogos(json, incluir) {
-  const re = new RegExp(incluir || INCLUI_PADRAO, 'i'), saida = [], nomes = new Set();
-  const grupoNome = o => str(o.nome || o.nome_campeonato || o.campeonato || o.competicao || o.nome_competicao || o.categoria || o.titulo);
+export function extrairJogos(json, incluir, diaPadrao) {
+  const re = new RegExp(incluir || INCLUI_PADRAO, 'i'), saida = [], nomes = new Set(), PULA = new Set(['jogos', 'dados', 'data', 'resultado', 'resultados', 'items', 'itens', 'calendario']);
+  const pick = (o, re2) => { const k = Object.keys(o).find(x => re2.test(x) && o[x] != null && typeof o[x] != 'object'); return k ? o[k] : null; };
   (function walk(n, ctx) {
     if (Array.isArray(n)) { for (const x of n) walk(x, ctx); return; }
     if (!n || typeof n != 'object') return;
     if (n.id_jogo != null) {
-      const comp = ctx.join(' | '); if (ctx[0]) nomes.add(ctx[0]);
+      const comp = ctx.join(' | '); if (ctx[0]) nomes.add(ctx[0] + (ctx[1] ? ' / ' + ctx[1] : ''));
       if (EXCLUI.test(comp) || !re.test(comp)) return;
-      const c = time(n.mandante), f = time(n.visitante), ini = quando(n.data || n.data_jogo, n.hora || n.horario);
+      const c = time(n.mandante), f = time(n.visitante), data = n.data || n.data_jogo || pick(n, /^data/i) || diaPadrao, hora = n.hora || n.horario || pick(n, /^hora/i);
+      const ini = quando(data, hora);
       if (!c.nome || !f.nome || ini == null) return;
-      const canais = []; const vistos = new Set();
+      const canais = [], vistos = new Set();
       for (const t of Array.isArray(n.transmissoes) ? n.transmissoes : []) {
         for (const nome of str(t && t.nome != null ? t.nome : t).split(/\s*[\/,]\s*|\s+e\s+/)) {
           const k = nome.toLowerCase(); if (nome && !vistos.has(k)) { vistos.add(k); canais.push(EXTERNO.test(nome) ? { codigo: '', nome, externo: true } : { codigo: '', nome }); }
@@ -43,8 +44,11 @@ export function extrairJogos(json, incluir) {
       saida.push({ idCbf: String(n.id_jogo), rodada: num(n.rodada), casa: c.nome, fora: f.nome, escudos: { casa: c.escudo, fora: f.escudo }, ini, golsCasa: c.gols, golsFora: f.gols, local: str(n.local || n.estadio), canais, competicao: ctx[0] || '', encerrado: /encerrad|finaliz/.test(txt), adiado: /adiad|suspens|cancel/.test(txt) });
       return;
     }
-    const nm = grupoNome(n), next = nm && !Array.isArray(n) && (Object.values(n).some(v => v && typeof v == 'object')) ? ctx.concat(nm) : ctx;
-    for (const k in n) if (n[k] && typeof n[k] == 'object') walk(n[k], next);
+    for (const k in n) {
+      const v = n[k]; if (!v || typeof v != 'object') continue;
+      const nome = !/^\d+$/.test(k) && !PULA.has(k.toLowerCase()) ? k : str(Array.isArray(n) ? '' : v.nome_campeonato || v.campeonato || v.competicao);
+      walk(v, nome ? ctx.concat(nome) : ctx);
+    }
   })(json, []);
   return { jogos: saida, competicoes: [...nomes] };
 }
@@ -74,7 +78,7 @@ export async function coletarCBF(now, cache, cfg = {}) {
     if (velho && now - velho.t < minutos * 60e3) { novo[dia] = velho; ok++; diag.push({ dia, fonte: 'cache' }); continue; }
     if (chamadas++) await sleep(2500);
     const [a, m, dd] = dia.split('-'), r = await pegar(`${BASE}/api/cbf/calendario/jogos/${a}/${m}/${dd}`);
-    if (r.json) { const x = extrairJogos(r.json, cfg.incluir); novo[dia] = { t: now, jogos: x.jogos, competicoes: x.competicoes }; ok++; diag.push({ dia, status: r.st, jogos: x.jogos.length }); }
+    if (r.json) { const x = extrairJogos(r.json, cfg.incluir, dia); novo[dia] = { t: now, jogos: x.jogos, competicoes: x.competicoes }; ok++; diag.push({ dia, status: r.st, jogos: x.jogos.length }); }
     else { diag.push({ dia, status: r.st, erro: r.erro }); if (velho) novo[dia] = velho; }
   }
   const jogos = []; for (const d in novo) { for (const j of novo[d].jogos) jogos.push(j); for (const c of novo[d].competicoes || []) comps.add(c); }
@@ -90,7 +94,7 @@ export async function testeCBF() {
     const t = await r.text();
     console.log('status:', r.status, '| tipo:', r.headers.get('content-type'), '| servidor:', r.headers.get('server'), '| tamanho:', t.length);
     console.log('início da resposta:', t.slice(0, 500).replace(/\s+/g, ' '));
-    try { const x = extrairJogos(JSON.parse(t)); console.log('JSON ok. jogos reconhecidos:', x.jogos.length, '| competições:', JSON.stringify(x.competicoes)); console.log('exemplo:', JSON.stringify(x.jogos[0] || null)); }
+    try { const x = extrairJogos(JSON.parse(t), undefined, ymdBR(Date.now())); console.log('JSON ok. jogos reconhecidos:', x.jogos.length, '| competições:', JSON.stringify(x.competicoes)); console.log('exemplo:', JSON.stringify(x.jogos[0] || null)); const bruto = JSON.parse(t); let g = null; (function w(n) { if (g || !n || typeof n != 'object') return; if (n.id_jogo != null) { g = n; return; } for (const k in n) w(n[k]); })(bruto); console.log('campos do 1º jogo:', g ? Object.keys(g).join(', ') : '-', '| data/hora:', g && JSON.stringify([g.data, g.hora])); }
     catch (e) { console.log('não é JSON legível:', e.message); }
   } catch (e) { console.log('falhou:', e.message); }
 }
