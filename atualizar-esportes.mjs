@@ -1,12 +1,13 @@
 // CCTV | Esportes: junta o meuguia.tv (canal, horário, título) com a football-data.org (placar, escudos)
 // e publica um JSON pronto para o app. Roda a cada poucos minutos pelo GitHub Actions.
+import { coletarCBF, testeCBF } from './cbf.mjs';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const BASE = 'https://meuguia.tv';
 const UA = 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
 const CODIGOS = ['BSP', '135', 'ESP', 'ES2', 'ES3', 'ES4', 'ES5', 'OFF', '121', 'SPO', 'SP2', 'SP3'];
-const COMPETICOES = ['WC', 'CL', 'BL1', 'DED', 'BSA', 'PD', 'FL1', 'ELC', 'PPL', 'EC', 'SA', 'PL'];
+const COMPETICOES = ['WC', 'CL', 'BL1', 'DED', 'PD', 'FL1', 'ELC', 'PPL', 'EC', 'SA', 'PL'];
 const pad = n => String(n).padStart(2, '0');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -108,6 +109,26 @@ async function getText(url, tries = 3) {
   }
   throw err;
 }
+
+// Junta os jogos da CBF com os do guia: a CBF manda (canal, placar, escudo); o guia entra como reserva de canal.
+export function mesclarCBF(jogos, cbf, now, tabTimes = {}) {
+  const usados = new Set(); let n = 0, novos = 0;
+  const ch = (a, b) => { const k = new Set(a.map(c => norm(c.nome))); return a.concat(b.filter(c => !k.has(norm(c.nome)))); };
+  for (const c of cbf) {
+    const A = aliasPt(c.casa, tabTimes), B = aliasPt(c.fora, tabTimes);
+    const g = jogos.find(j => !usados.has(j) && j.tipo == 'jogo' && !j.vt && j.casa && Math.abs(j.iniMs - c.ini) <= 3 * 3600e3 && igual(A, aliasPt(j.casa, tabTimes)) && igual(B, aliasPt(j.fora, tabTimes)));
+    if (g) usados.add(g), n++; else novos++;
+    const fim = g ? Date.parse(g.fim) : c.ini + 2 * 3600e3;
+    const dec = now - c.ini, temGols = c.golsCasa != null && c.golsFora != null && dec >= 0;
+    const status = c.adiado ? 'ADIADO' : c.encerrado || (temGols && dec > 135 * 60e3) ? 'ENCERRADO' : temGols ? 'AO_VIVO' : null;
+    const j = { id: 'cbf' + c.idCbf, inicio: new Date(c.ini).toISOString(), fim: new Date(Math.max(fim, c.ini + 3600e3)).toISOString(), titulo: c.casa + ' x ' + c.fora, tipo: 'jogo', vt: false, aoVivoTag: g ? g.aoVivoTag : dec >= 0 && dec < 135 * 60e3, genero: 'Esporte/Futebol', esporte: 'Futebol', casa: c.casa, fora: c.fora, canais: ch(c.canais, g ? g.canais : []), escudos: c.escudos, competicao: { nome: c.competicao, codigo: 'CBF' }, rodada: c.rodada, local: c.local, fonte: 'cbf', iniMs: c.ini };
+    if (status && status != 'ADIADO' && temGols) j.placar = { casa: c.golsCasa, fora: c.golsFora, status, minuto: null };
+    else if (status == 'ADIADO') j.placar = { casa: null, fora: null, status, minuto: null };
+    if (g) jogos.splice(jogos.indexOf(g), 1, j); else jogos.push(j);
+  }
+  return { casados: n, novos };
+}
+
 const lerJson = (p, pad2) => { try { return existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : pad2; } catch { return pad2; } };
 const ymd = ms => new Date(ms).toISOString().slice(0, 10);
 
@@ -140,9 +161,17 @@ export async function main() {
       const n = juntar(jogos, (await r.json()).matches || [], E.times || {}); apiOk = true; apiEm = new Date(now).toISOString(); console.log('placares ligados:', n);
     } else console.error('sem FOOTBALL_DATA_TOKEN');
   } catch (e) { console.error('api:', e.message); if (prev) for (const j of jogos) { const o = prev.jogos.find(x => x.id == j.id); if (o && !j.placar) { j.placar = o.placar; j.escudos = o.escudos; j.competicao = o.competicao; } } }
-  const saida = { v: 1, atualizado: new Date(now).toISOString(), meuguia_ok: ok > 0, meuguia_em: meuguiaEm, api_ok: apiOk, api_em: apiEm, canais_guia: [...codigos].map(([c, n]) => ({ codigo: c, nome: (novas[c] && novas[c].nome) || n || c })), jogos: jogos.map(({ iniMs, ...j }) => j) };
+  let cbfOk = false, cbfDiag = [], cbfComps = [];
+  try {
+    const cc = lerJson('dados/cbf.json', {}), r = await coletarCBF(now, cc, E.cbf || {});
+    cbfDiag = r.diag; cbfComps = r.competicoes; cbfOk = r.ok; console.log('cbf:', JSON.stringify(r.diag));
+    if (r.ok) { const m = mesclarCBF(jogos, r.jogos, now, E.times || {}); console.log('cbf jogos:', r.jogos.length, JSON.stringify(m)); }
+    mkdirSync('out', { recursive: true }); writeFileSync('out/cbf.json', JSON.stringify(r.cache));
+  } catch (e) { console.error('cbf:', e.message); try { writeFileSync('out/cbf.json', JSON.stringify(lerJson('dados/cbf.json', {}))); } catch {} }
+  jogos.sort((a, b) => a.iniMs - b.iniMs);
+  const saida = { v: 1, atualizado: new Date(now).toISOString(), meuguia_ok: ok > 0, meuguia_em: meuguiaEm, api_ok: apiOk, api_em: apiEm, cbf_ok: cbfOk, cbf_diag: cbfDiag, cbf_competicoes: cbfComps, canais_guia: [...codigos].map(([c, n]) => ({ codigo: c, nome: (novas[c] && novas[c].nome) || n || c })), jogos: jogos.map(({ iniMs, ...j }) => j) };
   mkdirSync('out', { recursive: true });
   writeFileSync('out/esportes.json', JSON.stringify(saida)); writeFileSync('out/grades.json', JSON.stringify(novas));
   console.log(`ok: ${ok} canais, ${falhas} falhas, ${saida.jogos.length} itens`);
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(e => { console.error(e); process.exit(1); });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) (process.argv.includes('--teste-cbf') ? testeCBF() : main()).catch(e => { console.error(e); process.exit(1); });
