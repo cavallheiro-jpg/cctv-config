@@ -113,7 +113,7 @@ async function getText(url, tries = 3) {
 // Junta os jogos da CBF com os do guia: a CBF manda (canal, placar, escudo); o guia entra como reserva de canal.
 export function mesclarCBF(jogos, cbf, now, tabTimes = {}) {
   const usados = new Set(); let n = 0, novos = 0;
-  const ch = (a, b) => { const k = new Set(a.map(c => norm(c.nome))); return a.concat(b.filter(c => !k.has(norm(c.nome)))); };
+  const nk = c => norm(c.nome).replace(/\s+/g, ''), ch = (a, b) => { const k = new Set(a.map(nk)); return a.concat(b.filter(c => !k.has(nk(c)))); };
   for (const c of cbf) {
     const A = aliasPt(c.casa, tabTimes), B = aliasPt(c.fora, tabTimes);
     const g = jogos.find(j => !usados.has(j) && j.tipo == 'jogo' && !j.vt && j.casa && Math.abs(j.iniMs - c.ini) <= 3 * 3600e3 && igual(A, aliasPt(j.casa, tabTimes)) && igual(B, aliasPt(j.fora, tabTimes)));
