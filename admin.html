@@ -28,6 +28,11 @@ details{margin-top:6px;font-size:.92rem}summary{cursor:pointer;color:var(--text)
 code{background:#0f0f13;padding:2px 6px;border-radius:6px;word-break:break-all}
 ol{padding-left:20px}
 
+
+.eq{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.eq .ln{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px;align-items:center}
+.eq .ln button{min-height:46px;border:0;border-radius:10px;background:#26262C;color:var(--text);font-size:1.1rem}
+.add{margin-top:10px;border:1px dashed var(--line);background:none;color:var(--accent);border-radius:10px;padding:12px;font:inherit;font-weight:600;width:100%}
 </style>
 </head>
 <body>
@@ -48,6 +53,12 @@ ol{padding-left:20px}
     <label for="msg">Mensagem do aviso (opcional)</label><textarea id="msg" rows="2" placeholder="Para renovar, entre em contato pelo WhatsApp."></textarea>
     <label for="tmdb">Chave do TMDB (capas, elenco e recomendações)</label><input id="tmdb" autocapitalize="off" placeholder="chave da API (v3)">
     <label for="hide">Categorias de canais que não carregam (uma por linha)</label><textarea id="hide" rows="7" placeholder="Canada"></textarea>
+  </section>
+
+  <section>
+    <h2>Nomes dos desenhos (capas da área Infantil)</h2>
+    <p class="hint">O app tira o "24H" do nome e procura a capa do desenho no TMDB. Se a capa vier errada, ou o nome aparecer errado, corrija aqui. Na esquerda, o nome do canal como está na lista. Na direita, o nome certo do desenho. Pode colocar o ano entre parênteses, ex.: A Família Addams (1992). Para forçar um desenho exato, termine com # e o número dele no TMDB, ex.: Tom e Jerry #1426</p>
+    <div class="eq" id="eqn"></div><button class="add" type="button" id="addn">+ Adicionar desenho</button>
   </section>
 
   <section>
@@ -87,7 +98,12 @@ try { const g = JSON.parse(localStorage.getItem('cctv-admin') || '{}'); if (g.ow
 paint();
 function remember() { try { localStorage.setItem('cctv-admin', JSON.stringify({ own: $('#own').value.trim(), rep: $('#rep').value.trim(), tok: $('#rem').checked ? $('#tok').value.trim() : '' })); } catch (e) {} }
 
-function fill(c) { const d = c.dns || []; $('#d1').value = d[0] || ''; $('#d2').value = d[1] || ''; $('#d3').value = d[2] || ''; $('#ep').value = c.epg || ''; $('#wa').value = c.wa || ''; $('#dias').value = c.warnDays ?? 3; $('#msg').value = c.msg || ''; $('#tmdb').value = c.tmdb ?? ''; $('#hide').value = (c.hide || []).join('\n'); }
+
+function nmRow(k, v) { const r = document.createElement('div'); r.className = 'ln'; r.innerHTML = '<input placeholder="Nome do canal (ex.: 24H FAMILIA ADDAMS (1992))"><input placeholder="Nome certo (ex.: A Família Addams (1992))"><button type="button" aria-label="Remover">✕</button>'; const i = r.querySelectorAll('input'); i[0].value = k || ''; i[1].value = v || ''; r.querySelector('button').onclick = () => r.remove(); $('#eqn').append(r); }
+function nmFill(o) { $('#eqn').textContent = ''; Object.keys(o || {}).forEach(k => nmRow(k, o[k])); }
+function nmRead() { const o = {}; document.querySelectorAll('#eqn .ln').forEach(r => { const i = r.querySelectorAll('input'), a = i[0].value.trim(), b = i[1].value.trim(); if (a && b) o[a] = b; }); return o; }
+$('#addn').onclick = () => nmRow('', '');
+function fill(c) { const d = c.dns || []; $('#d1').value = d[0] || ''; $('#d2').value = d[1] || ''; $('#d3').value = d[2] || ''; $('#ep').value = c.epg || ''; $('#wa').value = c.wa || ''; $('#dias').value = c.warnDays ?? 3; $('#msg').value = c.msg || ''; $('#tmdb').value = c.tmdb ?? ''; $('#hide').value = (c.hide || []).join('\n'); nmFill(c.nomes); }
 async function load() {
   st('Carregando…');
   try {
@@ -105,7 +121,7 @@ async function save() {
   if (wa.length < 10) return st('Informe o WhatsApp com 55 e o DDD, só números.', false);
   if (!(dias >= 0 && dias <= 60)) return st('Os dias do aviso devem ficar entre 0 e 60.', false);
   if (!$('#tok').value.trim()) return st('Cole o token de acesso do GitHub para salvar.', false);
-  const cfg = { dns, epg, wa, warnDays: dias, msg: $('#msg').value.trim(), tmdb: $('#tmdb').value.trim(), hide: $('#hide').value.split('\n').map(x => x.trim()).filter(Boolean) };
+  const cfg = { dns, epg, wa, warnDays: dias, msg: $('#msg').value.trim(), tmdb: $('#tmdb').value.trim(), hide: $('#hide').value.split('\n').map(x => x.trim()).filter(Boolean), nomes: nmRead() };
   st('Salvando…');
   try {
     if (!sha) { const r0 = await fetch(api() + '?ref=' + B + '&t=' + Date.now(), { headers: hdr() }); if (r0.ok) sha = (await r0.json()).sha; }
