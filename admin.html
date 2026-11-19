@@ -28,11 +28,6 @@ details{margin-top:6px;font-size:.92rem}summary{cursor:pointer;color:var(--text)
 code{background:#0f0f13;padding:2px 6px;border-radius:6px;word-break:break-all}
 ol{padding-left:20px}
 
-.eq{display:flex;flex-direction:column;gap:8px;margin-top:8px}
-.eq .ln{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px;align-items:center}
-.eq .ln button{min-height:46px;border:0;border-radius:10px;background:#26262C;color:var(--text);font-size:1.1rem}
-.eq .hd{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px;color:var(--mute);font-size:.8rem}
-.add{margin-top:10px;border:1px dashed var(--line);background:none;color:var(--accent);border-radius:10px;padding:12px;font:inherit;font-weight:600;width:100%}
 </style>
 </head>
 <body>
@@ -53,17 +48,6 @@ ol{padding-left:20px}
     <label for="msg">Mensagem do aviso (opcional)</label><textarea id="msg" rows="2" placeholder="Para renovar, entre em contato pelo WhatsApp."></textarea>
     <label for="tmdb">Chave do TMDB (capas, elenco e recomendações)</label><input id="tmdb" autocapitalize="off" placeholder="chave da API (v3)">
     <label for="hide">Categorias de canais que não carregam (uma por linha)</label><textarea id="hide" rows="7" placeholder="Canada"></textarea>
-  </section>
-
-  <section>
-    <h2>Esportes: tabelas de equivalência</h2>
-    <p class="hint">O serviço de esportes lê o guia (meuguia.tv) e a football-data.org. Estas tabelas ligam os nomes do guia aos nomes que o app e a API usam. Só preencha quando algo não casar sozinho.</p>
-    <label>Canais: nome no guia → nome na sua lista IPTV</label>
-    <div class="eq" id="eqc"></div><button class="add" type="button" id="addc">+ Adicionar canal</button>
-    <label style="margin-top:18px;display:block">Times: nome no guia (português) → nome na API (inglês)</label>
-    <div class="eq" id="eqt"></div><button class="add" type="button" id="addt">+ Adicionar time</button>
-    <label for="comp" style="margin-top:18px;display:block">Competições da API (códigos separados por vírgula)</label><input id="comp" placeholder="WC, CL, BL1, DED, BSA, PD, FL1, ELC, PPL, EC, SA, PL">
-    <label for="extras" style="margin-top:14px;display:block">Canais extras do guia (códigos separados por vírgula, opcional)</label><input id="extras" placeholder="ex.: SP3, ES5">
   </section>
 
   <section>
@@ -103,16 +87,7 @@ try { const g = JSON.parse(localStorage.getItem('cctv-admin') || '{}'); if (g.ow
 paint();
 function remember() { try { localStorage.setItem('cctv-admin', JSON.stringify({ own: $('#own').value.trim(), rep: $('#rep').value.trim(), tok: $('#rem').checked ? $('#tok').value.trim() : '' })); } catch (e) {} }
 
-let ESPX = {};
-function eqRow(box, k, v, ph) { const r = document.createElement('div'); r.className = 'ln'; r.innerHTML = '<input placeholder="' + ph[0] + '"><input placeholder="' + ph[1] + '"><button type="button" aria-label="Remover">✕</button>'; const i = r.querySelectorAll('input'); i[0].value = k || ''; i[1].value = v || ''; r.querySelector('button').onclick = () => r.remove(); box.append(r); }
-function eqFill(id, o, ph) { const b = $(id); b.textContent = ''; Object.keys(o || {}).forEach(k => eqRow(b, k, o[k], ph)); }
-function eqRead(id) { const o = {}; document.querySelectorAll(id + ' .ln').forEach(r => { const i = r.querySelectorAll('input'), a = i[0].value.trim(), b = i[1].value.trim(); if (a && b) o[a] = b; }); return o; }
-const PHC = ['Nome no guia (ex.: SporTV 2)', 'Nome na lista (ex.: BR SporTV 2)'], PHT = ['Time no guia (ex.: Atlético-MG)', 'Time na API (ex.: Clube Atlético Mineiro)'];
-$('#addc').onclick = () => eqRow($('#eqc'), '', '', PHC); $('#addt').onclick = () => eqRow($('#eqt'), '', '', PHT);
-const csv = v => String(v || '').split(/[,\s]+/).map(x => x.trim()).filter(Boolean);
-function espFill(e) { ESPX = e || {}; eqFill('#eqc', ESPX.canais, PHC); eqFill('#eqt', ESPX.times, PHT); $('#comp').value = (ESPX.competicoes || []).join(', '); $('#extras').value = (ESPX.extras || []).join(', '); }
-function espRead() { const o = Object.assign({}, ESPX); o.canais = eqRead('#eqc'); o.times = eqRead('#eqt'); const c = csv($('#comp').value), x = csv($('#extras').value); if (c.length) o.competicoes = c; else delete o.competicoes; if (x.length) o.extras = x; else delete o.extras; return o; }
-function fill(c) { const d = c.dns || []; $('#d1').value = d[0] || ''; $('#d2').value = d[1] || ''; $('#d3').value = d[2] || ''; $('#ep').value = c.epg || ''; $('#wa').value = c.wa || ''; $('#dias').value = c.warnDays ?? 3; $('#msg').value = c.msg || ''; $('#tmdb').value = c.tmdb ?? ''; $('#hide').value = (c.hide || []).join('\n'); espFill(c.esportes); }
+function fill(c) { const d = c.dns || []; $('#d1').value = d[0] || ''; $('#d2').value = d[1] || ''; $('#d3').value = d[2] || ''; $('#ep').value = c.epg || ''; $('#wa').value = c.wa || ''; $('#dias').value = c.warnDays ?? 3; $('#msg').value = c.msg || ''; $('#tmdb').value = c.tmdb ?? ''; $('#hide').value = (c.hide || []).join('\n'); }
 async function load() {
   st('Carregando…');
   try {
@@ -130,7 +105,7 @@ async function save() {
   if (wa.length < 10) return st('Informe o WhatsApp com 55 e o DDD, só números.', false);
   if (!(dias >= 0 && dias <= 60)) return st('Os dias do aviso devem ficar entre 0 e 60.', false);
   if (!$('#tok').value.trim()) return st('Cole o token de acesso do GitHub para salvar.', false);
-  const cfg = { dns, epg, wa, warnDays: dias, msg: $('#msg').value.trim(), tmdb: $('#tmdb').value.trim(), hide: $('#hide').value.split('\n').map(x => x.trim()).filter(Boolean), esportes: espRead() };
+  const cfg = { dns, epg, wa, warnDays: dias, msg: $('#msg').value.trim(), tmdb: $('#tmdb').value.trim(), hide: $('#hide').value.split('\n').map(x => x.trim()).filter(Boolean) };
   st('Salvando…');
   try {
     if (!sha) { const r0 = await fetch(api() + '?ref=' + B + '&t=' + Date.now(), { headers: hdr() }); if (r0.ok) sha = (await r0.json()).sha; }
