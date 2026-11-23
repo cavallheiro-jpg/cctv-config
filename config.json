@@ -17,24 +17,38 @@
     "Portugal",
     "Portugal Esportes"
   ],
-  "nomes": {
-    "[24] AHHH! MONSTROS": "Aaahh!!! Monstros (1994)",
-    "[24H] Ben 10: Ominiverse": "Ben 10: Omniverse",
-    "[24H] Bibo Pai e Bobi Filho": "Bibo Pai e Bobi Filho",
-    "[24H] Clube da Luluzinha": "Luluzinha",
-    "[24H] Coiote e Papaleguas": "Coiote e Papaleguas",
-    "[24H] Dpa Mini: Detetive do Predio Azul": "D.P.A. Mini",
-    "[24H] Faisca e fumaca": "Faísca e fumaça",
-    "Gasparzinho e Seus Amigos": "As Novas Aventuras de Gasparzinho",
-    "[24H] Hora da Aventura": "Hora de Aventura",
-    "[24H] Inspetor Bugiganga": "Inspetor Bugiganga",
-    "[24H] Leo o Caminhao": "Leo o Caminhão",
-    "[24H] Mortal Kombat: Desenho Animado": "Mortal Kombat: Os Defensores da Terra",
-    "[24H] Mutley e Dick Vigarista": "Dick Vigarista e Muttley",
-    "[24H] Show dos Looney Toones": "O Show dos Looney Toones",
-    "[24H] Ursinho Pooh e Tigrao": "Ursinho Pooh",
-    "Homem de Ferro 24rhs": "Homem de Ferro (1994)",
-    "Jackie Chan e Amigos": "As Aventuras de Jackie Chan",
-    "Rugrats": "Rugrats: Os Anjinhos (1991) #3022"
-  }
+  "nomes": {},
+  "planos": [
+    {
+      "n": "1 mês",
+      "p": "R$ 35,00",
+      "d": "30 dias",
+      "tag": ""
+    },
+    {
+      "n": "2 meses",
+      "p": "R$ 65,00",
+      "d": "60 dias",
+      "tag": ""
+    },
+    {
+      "n": "3 meses",
+      "p": "R$ 90,00",
+      "d": "90 dias",
+      "tag": "CAMPEÃO DE ASSINATURA"
+    },
+    {
+      "n": "6 meses",
+      "p": "R$ 170,00",
+      "d": "180 dias",
+      "tag": ""
+    },
+    {
+      "n": "12 meses",
+      "p": "R$ 300,00",
+      "d": "365 dias",
+      "tag": ""
+    }
+  ],
+  "avisos": []
 }
